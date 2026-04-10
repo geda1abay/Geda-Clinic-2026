@@ -20,8 +20,26 @@ async function seedAdmin() {
   const password = '15183510';
   const fullName = 'Geda Abay';
   const role = 'admin';
+  const defaultDepartments = [
+    'Cardiology', 
+    'Pediatrics', 
+    'Neurology', 
+    'Surgery', 
+    'Orthopedics', 
+    'Dermatology', 
+    'Internal Medicine',
+    'Laboratory'
+  ];
 
   try {
+    console.log('Seeding departments...');
+    for (const name of defaultDepartments) {
+      await pool.query(
+        'INSERT INTO public.departments (name) VALUES ($1) ON CONFLICT (name) DO NOTHING',
+        [name]
+      );
+    }
+    
     console.log('Seeding admin user...');
     
     // Hash password
