@@ -110,11 +110,14 @@ const DoctorsPage = () => {
           body: JSON.stringify({
             full_name: form.full_name,
             role: form.role,
-            department_id: form.role === 'specialist_doctor' ? form.department_id || null : null,
+            department_id: form.role === 'specialist_doctor' ? (form.department_id || null) : null,
           })
         });
 
-        if (!res.ok) throw new Error('Failed to update staff');
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to update staff');
+        }
         toast.success('Staff updated successfully');
       } else {
         const res = await fetch(`${API_URL}/doctors`, {
@@ -128,17 +131,20 @@ const DoctorsPage = () => {
             password: form.password,
             full_name: form.full_name,
             role: form.role,
-            department_id: form.role === 'specialist_doctor' ? form.department_id : null,
+            department_id: form.role === 'specialist_doctor' ? (form.department_id || null) : null,
           })
         });
 
-        if (!res.ok) throw new Error('Failed to create staff');
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to create staff member');
+        }
         toast.success('Staff member created successfully');
       }
       resetForm();
       fetchDoctors();
-    } catch (err) {
-      toast.error(editDoctor ? 'Failed to update staff' : 'Failed to create staff member');
+    } catch (err: any) {
+      toast.error(err.message || (editDoctor ? 'Failed to update staff' : 'Failed to create staff member'));
     }
   };
 

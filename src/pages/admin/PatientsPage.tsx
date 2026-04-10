@@ -80,7 +80,10 @@ const PatientsPage = () => {
           },
           body: JSON.stringify(payload)
         });
-        if (!res.ok) throw new Error('Failed to update');
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to update');
+        }
         toast.success('Patient updated');
       } else {
         const res = await fetch(`${API_URL}/patients`, {
@@ -91,14 +94,17 @@ const PatientsPage = () => {
           },
           body: JSON.stringify(payload)
         });
-        if (!res.ok) throw new Error('Failed to create');
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to create');
+        }
         toast.success('Patient created');
       }
       setOpen(false);
       resetForm();
       fetchData();
-    } catch (err) {
-      toast.error(editPatient ? 'Failed to update patient' : 'Failed to create patient');
+    } catch (err: any) {
+      toast.error(err.message || (editPatient ? 'Failed to update patient' : 'Failed to create patient'));
     }
   };
 

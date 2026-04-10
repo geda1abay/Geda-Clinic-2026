@@ -195,17 +195,40 @@ app.delete('/api/departments/:id', authenticateToken, async (req, res) => {
 // Doctors
 app.post('/api/doctors', authenticateToken, async (req, res) => {
   const { email, password, full_name, role, department_id } = req.body;
+  console.log('Creating staff member:', { email, full_name, role, department_id });
+  
   try {
     const hash = await bcrypt.hash(password, 10);
-    const userResult = await pool.query(
-      'INSERT INTO public.app_users (email, password_hash, full_name) VALUES ($1, $2, $3) RETURNING id',
-      [email, hash, full_name]
-    );
-    const userId = userResult.rows[0].id;
-    await pool.query('INSERT INTO public.user_roles (user_id, role) VALUES ($1, $2)', [userId, role]);
-    await pool.query('INSERT INTO public.profiles (user_id, full_name, email, department_id) VALUES ($1, $2, $3, $4)', [userId, full_name, email, department_id]);
-    res.json({ message: 'Doctor created' });
+    
+    // Start a transaction
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      const userResult = await client.query(
+        'INSERT INTO public.app_users (email, password_hash, full_name) VALUES ($1, $2, $3) RETURNING id',
+        [email, hash, full_name]
+      );
+      const userId = userResult.rows[0].id;
+      
+      await client.query('INSERT INTO public.user_roles (user_id, role) VALUES ($1, $2)', [userId, role]);
+      
+      await client.query(
+        'INSERT INTO public.profiles (user_id, full_name, email, department_id) VALUES ($1, $2, $3, $4)', 
+        [userId, full_name, email, (department_id || null)]
+      );
+      
+      await client.query('COMMIT');
+      console.log('Staff member created successfully id:', userId);
+      res.json({ message: 'Doctor created', id: userId });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   } catch (err) {
+    console.error('Error creating staff:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
