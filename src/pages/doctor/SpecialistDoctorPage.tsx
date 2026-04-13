@@ -20,6 +20,7 @@ const SpecialistDoctorPage = () => {
   const { user } = useAuth();
   const [patients, setPatients] = useState<any[]>([]);
   const [labRequests, setLabRequests] = useState<any[]>([]);
+  const [bills, setBills] = useState<any[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
   
   const [treatOpen, setTreatOpen] = useState(false);
@@ -33,15 +34,18 @@ const SpecialistDoctorPage = () => {
     if (!user) return;
     const token = localStorage.getItem('auth_token');
     try {
-      const [patRes, labRes] = await Promise.all([
+      const [patRes, labRes, billRes] = await Promise.all([
         fetch(`${API_URL}/patients`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${API_URL}/lab_requests`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/bills`, { headers: { 'Authorization': `Bearer ${token}` } }),
       ]);
       const patData = await patRes.json();
       const labData = await labRes.json();
+      const billData = await billRes.json();
       
       setPatients(patData || []);
       setLabRequests(labData || []);
+      setBills(billData || []);
     } catch (err) {
       console.error('Failed to fetch data', err);
       toast.error('Failed to load data');
@@ -149,28 +153,45 @@ const SpecialistDoctorPage = () => {
                       <TableHead>Age</TableHead>
                       <TableHead>Contact</TableHead>
                       <TableHead>History</TableHead>
+                      <TableHead>Payment</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {patients.map((patient) => (
-                      <TableRow key={patient.id}>
-                        <TableCell className="font-medium">{patient.name}</TableCell>
-                        <TableCell>{patient.age}</TableCell>
-                        <TableCell>{patient.contact}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">{patient.medical_history || '-'}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => { setSelectedPatient(patient); setTreatOpen(true); }}>
-                              <ClipboardPlus className="mr-1 h-3 w-3" />Treat
-                            </Button>
-                            <Button variant="ghost" size="sm" className="text-primary" onClick={() => { setSelectedPatient(patient); setLabOpen(true); }}>
-                              <FlaskConical className="mr-1 h-3 w-3" />Request Lab
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {patients.map((patient) => {
+                      const patientBills = bills.filter(b => b.patient_id === patient.id);
+                      const isPaid = patientBills.some(b => b.status === 'paid');
+                      
+                      return (
+                        <TableRow key={patient.id}>
+                          <TableCell className="font-medium">{patient.name}</TableCell>
+                          <TableCell>{patient.age}</TableCell>
+                          <TableCell>{patient.contact}</TableCell>
+                          <TableCell className="max-w-[200px] truncate">{patient.medical_history || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className={isPaid ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}>
+                              {isPaid ? 'PAID' : 'PENDING'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              {isPaid ? (
+                                <>
+                                  <Button variant="ghost" size="sm" onClick={() => { setSelectedPatient(patient); setTreatOpen(true); }}>
+                                    <ClipboardPlus className="mr-1 h-3 w-3" />Treat
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="text-primary" onClick={() => { setSelectedPatient(patient); setLabOpen(true); }}>
+                                    <FlaskConical className="mr-1 h-3 w-3" />Request Lab
+                                  </Button>
+                                </>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic">Blocked (Unpaid)</span>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     {patients.length === 0 && (
                       <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No referred patients</TableCell></TableRow>
                     )}

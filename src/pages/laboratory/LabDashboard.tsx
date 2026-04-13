@@ -65,16 +65,22 @@ const LabDashboard = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          result_note: resultNote,
-          cost_birr: parseFloat(cost) || 0,
-          status: 'completed'
-        })
+        body: JSON.stringify(
+          selectedRequest.payment_status === 'paid' 
+          ? {
+              result_note: resultNote,
+              cost_birr: parseFloat(cost) || 0,
+              status: 'completed'
+            }
+          : {
+              cost_birr: parseFloat(cost) || 0
+            }
+        )
       });
 
       if (!res.ok) throw new Error('Failed to update');
 
-      toast.success('Lab results and cost recorded');
+      toast.success(selectedRequest.payment_status === 'paid' ? 'Lab results and cost recorded' : 'Cost updated and sent to Admin');
       setEditOpen(false);
       fetchData();
     } catch (err) {
@@ -179,6 +185,12 @@ const LabDashboard = () => {
                   <span className="text-muted-foreground">Requested Test:</span>
                   <span className="font-medium truncate max-w-[250px]">{selectedRequest?.test_description}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Payment Status:</span>
+                  <Badge variant="secondary" className={selectedRequest?.payment_status === 'paid' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}>
+                    {selectedRequest?.payment_status?.toUpperCase() || 'PENDING'}
+                  </Badge>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -199,20 +211,27 @@ const LabDashboard = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="notes">Test Results / Notes</Label>
-                  <Textarea 
-                    id="notes"
-                    value={resultNote} 
-                    onChange={(e) => setResultNote(e.target.value)} 
-                    placeholder="Enter detailed test results for the specialist doctor..."
-                    className="min-h-[150px] resize-none"
-                  />
+                  {selectedRequest?.payment_status === 'pending' ? (
+                    <div className="p-4 border rounded-md bg-muted/30 text-muted-foreground text-sm flex items-center justify-center min-h-[150px]">
+                      Waiting for patient to pay at Admin. You cannot enter results yet.
+                    </div>
+                  ) : (
+                    <Textarea 
+                      id="notes"
+                      value={resultNote} 
+                      onChange={(e) => setResultNote(e.target.value)} 
+                      placeholder="Enter detailed test results for the specialist doctor..."
+                      className="min-h-[150px] resize-none"
+                    />
+                  )}
                 </div>
               </div>
 
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" className="flex-1" onClick={() => setEditOpen(false)}>Cancel</Button>
                 <Button className="flex-1" onClick={handleUpdate}>
-                  <CheckCircle className="mr-2 h-4 w-4" /> Save & Complete
+                  <CheckCircle className="mr-2 h-4 w-4" /> 
+                  {selectedRequest?.payment_status === 'paid' ? 'Save & Complete' : 'Update Cost'}
                 </Button>
               </div>
             </div>
